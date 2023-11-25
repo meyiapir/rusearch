@@ -9,3 +9,9 @@
 - Установить зависимости `pip install -r requirements.txt`
 - Запустить `python main.py`
 - **Готово, приложение будет готово на 8000 порту**
+
+## Запросы
+
+- `GET /search` - поиск по видео  
+- Параметры: `query: str` `token: str` `size: int`
+- `GET /status`
