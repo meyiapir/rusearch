@@ -5,3 +5,4 @@ pyarrow
 fastparquet
 fastapi
 envparse
+uvicorn

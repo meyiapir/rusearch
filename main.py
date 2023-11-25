@@ -3,6 +3,7 @@ import time
 import elastic_transport
 import elasticsearch
 import pandas as pd
+import uvicorn
 
 from elasticsearch import Elasticsearch
 
@@ -92,8 +93,12 @@ def search(query: str, size: int = 5, token: str = ""):
     if token != API_TOKEN:
         return {"error": "Invalid token"}
     es_manager = ElasticsearchManager(API_KEY, HOST, INDEX_NAME)
-    return es_manager.search(query, size)
+    return es_manager.search(query, size)["data"]
 
 @app.get("/status")
 def status():
     return {"status": "ok"}
+
+# Запуск сервера
+if __name__ == "__main__":
+    uvicorn.run(app, port=8000)
