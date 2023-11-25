@@ -1,0 +1,5 @@
+HOST = "https://ebd675001645491b893d0cf108d7dab6.us-central1.gcp.cloud.es.io:443"
+API_KEY = "RFZDMkE0d0JLOFF6X0JsczZyblQ6N1hmQTN4eVpRNDJLazhsMEVobTJ0UQ=="
+# API_KEY = "YWxCakE0d0JLOFF6X0Jsc1pMZ1Y6UERRQ2NrSENUbXU5Z19rb1hCZndGUQ=="
+INDEX_NAME = "search-rutube-nlp"
+# INDEX_NAME = "search-rutube-hack"
