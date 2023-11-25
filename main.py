@@ -1,28 +1,35 @@
 import time
 
 import elastic_transport
+import elasticsearch
 import pandas as pd
 
 from elasticsearch import Elasticsearch
 
 from config import HOST, INDEX_NAME, API_KEY
 from tqdm import tqdm
+from fastapi import FastAPI
 
+app = FastAPI()
 
 class ElasticsearchManager:
-    def __init__(self, api_key, host="http://localhost:9200", index_name="your_index_name"):
+    def __init__(self, api_key, host, index_name):
         self.es = Elasticsearch(host, api_key=api_key)
         self.index_name = index_name
 
     def search(self, query: str, size: int = 5) -> dict:
-        start_time = time.time()
-        result = []
-        if not query:
+        try:
+            start_time = time.time()
+            result = []
+            query = query.replace('/', '\\/')
+            if not query:
+                return {"data": result, "req_time": time.time() - start_time}
+            video_results = self.es.search(index=self.index_name, q=query, size=size)
+            for vid in video_results["hits"]["hits"]:
+                result.append({"id": vid["_source"]["id"], "title": vid["_source"]["title"], "speed": vid['_score']})
             return {"data": result, "req_time": time.time() - start_time}
-        video_results = self.es.search(index=self.index_name, q=query, size=size)
-        for vid in video_results["hits"]["hits"]:
-            result.append({"id": vid["_source"]["id"], "title": vid["_source"]["title"], "speed": vid['_score']})
-        return {"data": result, "req_time": time.time() - start_time}
+        except elasticsearch.BadRequestError:
+            return {"data": [], "req_time": 0}
 
     def insert(self, insert_data: list, pipeline="ent-search-generic-ingestion"):
         self.es.bulk(operations=insert_data, pipeline=pipeline)
@@ -36,7 +43,6 @@ class ElasticsearchManager:
                 "_extract_binary_content": True,
                 "_reduce_whitespace": True,
                 "_run_ml_inference": False
-                # "_run_ml_inference": True
             }
         ]
 
@@ -56,33 +62,36 @@ class ElasticsearchManager:
                 continue
             yield data[i:i + bs]
 
-    def create_sample_sub(self):
-        pass
+    def create_sample_sub(self, size=5):
+        queries = pd.read_csv('data/test_dataset_submission_queries.csv')[:100]
+        submit = pd.read_csv('data/sample_submission.csv')
+        for i in tqdm(range(queries.shape[0])):
+            found = list(map(lambda x: x['id'], self.search(queries['query'][i], size=size)["data"]))[:size]
+            submit['video_id'][i * size: i * size + len(found)] = found
+            submit['query'][i * size: i * size + size] = queries['query'][i]
 
-    @staticmethod
-    def fast_insert(t: bool = False):
+        submit.to_csv('submit.csv', index=False)
+
+    def fast_insert(self, t: bool = False):
         if t:
-            for req in es_manager.requests_by_batches(bs=10000):
+            for req in self.requests_by_batches(bs=10000):
                 try:
                     doc = []
                     for video in req:
-                        new_vid = es_manager.prepare_json_data(video)
+                        new_vid = self.prepare_json_data(video)
                         doc.extend(new_vid)
-                    es_manager.insert(doc)
+                    self.insert(doc)
                 except elastic_transport.ConnectionTimeout:
                     print("Timeout")
                     continue
             print("Done")
 
 
+@app.get("/search")
+def search(query: str, size: int = 5):
+    es_manager = ElasticsearchManager(API_KEY, HOST, INDEX_NAME)
+    return es_manager.search(query, size)
 
-# Пример использования
-es_manager = ElasticsearchManager(API_KEY, HOST, INDEX_NAME)
-n_l = False
-
-if n_l:
-    es_manager.fast_insert(t=False)
-else:
-    print(es_manager.search("кровати ")["req_time"])
-    # print(es_manager.update_index_mapping())
-
+@app.get("/status")
+def status():
+    return {"status": "ok"}
