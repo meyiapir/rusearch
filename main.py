@@ -6,7 +6,7 @@ import pandas as pd
 
 from elasticsearch import Elasticsearch
 
-from config import HOST, INDEX_NAME, API_KEY
+from config import HOST, INDEX_NAME, API_KEY, API_TOKEN
 from tqdm import tqdm
 from fastapi import FastAPI
 
@@ -88,7 +88,9 @@ class ElasticsearchManager:
 
 
 @app.get("/search")
-def search(query: str, size: int = 5):
+def search(query: str, size: int = 5, token: str = ""):
+    if token != API_TOKEN:
+        return {"error": "Invalid token"}
     es_manager = ElasticsearchManager(API_KEY, HOST, INDEX_NAME)
     return es_manager.search(query, size)
 
